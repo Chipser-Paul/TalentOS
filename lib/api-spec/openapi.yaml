@@ -3,13 +3,27 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: TalentOS recruitment platform API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: dashboard
+    description: Recruiter workspace overview
+  - name: jobs
+    description: Job requisitions and hiring pipeline
+  - name: candidates
+    description: Candidate profiles and screening signals
+  - name: assessments
+    description: Technical assessment lifecycle
+  - name: knowledge
+    description: Recruitment knowledge base
+  - name: automations
+    description: Workflow automation
+  - name: analytics
+    description: Hiring funnel analytics
 paths:
   /healthz:
     get:
@@ -24,6 +38,116 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /dashboard/summary:
+    get:
+      operationId: getDashboardSummary
+      tags: [dashboard]
+      summary: Get recruiter dashboard summary
+      responses:
+        "200":
+          description: Dashboard summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardSummary"
+  /dashboard/activity:
+    get:
+      operationId: getDashboardActivity
+      tags: [dashboard]
+      summary: Get recent recruiter activity
+      responses:
+        "200":
+          description: Recent activity
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ActivityEvent"
+  /jobs:
+    get:
+      operationId: listJobs
+      tags: [jobs]
+      summary: List active job requisitions
+      responses:
+        "200":
+          description: Job requisitions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Job"
+  /candidates:
+    get:
+      operationId: listCandidates
+      tags: [candidates]
+      summary: List candidates in the hiring workspace
+      responses:
+        "200":
+          description: Candidate profiles
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Candidate"
+  /assessments:
+    get:
+      operationId: listAssessments
+      tags: [assessments]
+      summary: List technical assessments
+      responses:
+        "200":
+          description: Technical assessments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Assessment"
+  /knowledge/sources:
+    get:
+      operationId: listKnowledgeSources
+      tags: [knowledge]
+      summary: List recruitment knowledge sources
+      responses:
+        "200":
+          description: Knowledge sources
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/KnowledgeSource"
+  /automations:
+    get:
+      operationId: listAutomations
+      tags: [automations]
+      summary: List recruitment automations
+      responses:
+        "200":
+          description: Automation workflows
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Automation"
+  /analytics/funnel:
+    get:
+      operationId: getAnalyticsFunnel
+      tags: [analytics]
+      summary: Get application funnel stages
+      responses:
+        "200":
+          description: Funnel stage counts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/FunnelStage"
 components:
   schemas:
     HealthStatus:
@@ -33,4 +157,158 @@ components:
           type: string
       required:
         - status
+    DashboardSummary:
+      type: object
+      properties:
+        activeJobs:
+          type: number
+        totalCandidates:
+          type: number
+        technicalAssessments:
+          type: number
+        interviewsScheduled:
+          type: number
+        shortlisted:
+          type: number
+        averageMatch:
+          type: number
+      required:
+        - activeJobs
+        - totalCandidates
+        - technicalAssessments
+        - interviewsScheduled
+        - shortlisted
+        - averageMatch
+    ActivityEvent:
+      type: object
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          enum: [screening, assessment, interview, shortlist, system]
+        title:
+          type: string
+        description:
+          type: string
+        occurredAt:
+          type: string
+        actor:
+          type: string
+      required: [id, type, title, description, occurredAt, actor]
+    Job:
+      type: object
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        department:
+          type: string
+        location:
+          type: string
+        employmentType:
+          type: string
+          enum: [full_time, part_time, contract]
+        status:
+          type: string
+          enum: [open, paused, closed]
+        applications:
+          type: number
+        shortlisted:
+          type: number
+        createdAt:
+          type: string
+      required: [id, title, department, location, employmentType, status, applications, shortlisted, createdAt]
+    Candidate:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        role:
+          type: string
+        location:
+          type: string
+        matchScore:
+          type: number
+        technicalScore:
+          type: number
+        interviewScore:
+          type: number
+        status:
+          type: string
+          enum: [new, screening, assessment, interview, shortlisted, rejected]
+        skills:
+          type: array
+          items:
+            type: string
+        appliedAt:
+          type: string
+      required: [id, name, role, location, matchScore, technicalScore, interviewScore, status, skills, appliedAt]
+    Assessment:
+      type: object
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        role:
+          type: string
+        submissions:
+          type: number
+        completionRate:
+          type: number
+        averageScore:
+          type: number
+        status:
+          type: string
+          enum: [draft, active, archived]
+      required: [id, title, role, submissions, completionRate, averageScore, status]
+    KnowledgeSource:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        kind:
+          type: string
+          enum: [policy, job_description, interview_guide, technical_document]
+        chunks:
+          type: number
+        updatedAt:
+          type: string
+        status:
+          type: string
+          enum: [ready, processing, needs_review]
+      required: [id, name, kind, chunks, updatedAt, status]
+    Automation:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        trigger:
+          type: string
+        steps:
+          type: number
+        runsThisMonth:
+          type: number
+        status:
+          type: string
+          enum: [active, paused, draft]
+      required: [id, name, trigger, steps, runsThisMonth, status]
+    FunnelStage:
+      type: object
+      properties:
+        label:
+          type: string
+        count:
+          type: number
+        conversionRate:
+          type: number
+      required: [label, count, conversionRate]
 

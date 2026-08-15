@@ -1,6 +1,6 @@
-# [Project name]
+# TalentOS
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+TalentOS is an AI-powered recruitment and developer evaluation platform for high-signal hiring decisions.
 
 ## Run & Operate
 
@@ -22,23 +22,35 @@ _Replace the heading above with the project's name, and this line with one sente
 
 ## Where things live
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+- `artifacts/talentos` — recruiter web workspace
+- `artifacts/api-server` — shared Express API gateway
+- `lib/api-spec/openapi.yaml` — API source of truth
+- `lib/api-client-react` — generated React Query hooks
+- `lib/api-zod` — generated server validation schemas
+- `lib/db` — Drizzle database package
+- `ARCHITECTURE.md` — system boundaries and runtime design
+- `docs/API.md` — Phase 1 endpoint inventory
 
 ## Architecture decisions
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+- Use the workspace's React + Vite and Express services so the first vertical slice runs inside the existing managed routing.
+- Keep HTTP contracts in OpenAPI and regenerate both client hooks and server schemas from one source.
+- Serve Phase 1 fixtures from the API, not the frontend, so UI integration exercises the production boundary.
+- Defer auth, persistence, AI execution, and background workers to their roadmap phases instead of hiding them behind fake interactions.
 
 ## Product
 
-_Describe the high-level user-facing capabilities of this app once they exist._
+TalentOS helps hiring teams create roles, screen candidates, run technical assessments, consult recruitment knowledge, automate handoffs, and understand funnel performance.
 
 ## User preferences
 
-_Populate as you build — explicit user instructions worth remembering across sessions._
+- Build in deliberate stages and teach the architecture as each production capability is introduced.
 
 ## Gotchas
 
-_Populate as you build — sharp edges, "always run X before Y" rules._
+- Run API codegen after editing `lib/api-spec/openapi.yaml`.
+- Use generated React Query hooks from `@workspace/api-client-react` rather than hand-written client types.
+- Keep the API base path at `/api`; the shared proxy handles service routing.
 
 ## Pointers
 

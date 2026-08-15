@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "TalentOS"
+description = "A production-style recruitment and developer evaluation platform foundation for recruiters and hiring teams. Phase 1 establishes the product shell, architecture, and navigation for jobs, candidates, assessments, AI screening, knowledge search, automation, analytics, and settings."
+version = "1.0.0"
+id = "artifacts/talentos"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 21177
+
+[services.development]
+run = "pnpm --filter @workspace/talentos run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/talentos", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/talentos/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "21177"
+BASE_PATH = "/"
