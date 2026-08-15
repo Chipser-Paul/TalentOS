@@ -2,11 +2,11 @@
 
 TalentOS is an AI-powered recruitment and developer evaluation platform for teams that want to move from applicant volume to high-signal hiring decisions.
 
-The product is being built in deliberate stages. Phase 1 establishes the system boundary, the recruiter workspace, and a typed API contract. Later phases will add managed authentication, persistent recruitment data, AI screening, RAG, technical evaluation, workflow automation, analytics, testing, and deployment.
+The product is being built in deliberate stages. The foundation now includes the recruiter workspace, typed API contracts, managed Clerk authentication, and per-user PostgreSQL workspaces. Later phases will add recruiter CRUD, AI screening, RAG, technical evaluation, workflow automation, analytics, testing, and deployment.
 
 ## Phase 1
 
-The first runnable slice is a recruiter workspace with fixture-backed API data:
+The first runnable slice is an authenticated recruiter workspace with a database-seeded starting workspace:
 
 - Overview of active hiring work and recent activity
 - Jobs and hiring pipeline
@@ -17,7 +17,7 @@ The first runnable slice is a recruiter workspace with fixture-backed API data:
 - Application funnel analytics
 - Workspace settings entry point
 
-The fixtures are intentionally served by the API rather than embedded in the frontend. This keeps the client contract honest while we build persistence and authentication in the next phases.
+New Clerk users receive an isolated Northstar Labs starter workspace on first authenticated access. The starter records are seeded by the API into PostgreSQL, not embedded in the frontend, so the client exercises the same ownership boundary used by future CRUD flows.
 
 ## Run
 

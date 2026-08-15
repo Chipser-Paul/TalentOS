@@ -36,7 +36,8 @@ TalentOS is an AI-powered recruitment and developer evaluation platform for high
 - Use the workspace's React + Vite and Express services so the first vertical slice runs inside the existing managed routing.
 - Keep HTTP contracts in OpenAPI and regenerate both client hooks and server schemas from one source.
 - Serve Phase 1 fixtures from the API, not the frontend, so UI integration exercises the production boundary.
-- Defer auth, persistence, AI execution, and background workers to their roadmap phases instead of hiding them behind fake interactions.
+- Clerk owns browser authentication; the Express API requires a Clerk session for workspace data and scopes seeded records to the current user.
+- TalentOS workspace tables live in PostgreSQL through Drizzle; first access seeds a usable starter workspace while recruiter CRUD is built next.
 
 ## Product
 

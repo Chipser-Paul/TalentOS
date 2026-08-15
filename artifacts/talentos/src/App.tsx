@@ -1,5 +1,8 @@
-import { useMemo, useState, type ReactNode } from 'react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
+import { ClerkProvider, Show, SignIn, SignUp, useClerk, useUser } from '@clerk/react';
+import { publishableKeyFromHost } from '@clerk/react/internal';
+import { shadcn } from '@clerk/themes';
 import {
   Activity,
   ArrowRight,
@@ -63,10 +66,71 @@ import {
 import { ErrorBoundary } from '@/components/error-boundary';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
-import { Link, Route, Router as WouterRouter, Switch, useLocation } from 'wouter';
+import { Link, Redirect, Route, Router as WouterRouter, Switch, useLocation } from 'wouter';
 import NotFound from '@/pages/not-found';
 
 const queryClient = new QueryClient();
+const clerkPubKey = publishableKeyFromHost(
+  window.location.hostname,
+  import.meta.env.VITE_CLERK_PUBLISHABLE_KEY,
+);
+const clerkProxyUrl = import.meta.env.VITE_CLERK_PROXY_URL;
+const basePath = import.meta.env.BASE_URL.replace(/\/$/, '');
+
+function stripBase(path: string) {
+  return basePath && path.startsWith(basePath)
+    ? path.slice(basePath.length) || '/'
+    : path;
+}
+
+const clerkAppearance = {
+  theme: shadcn,
+  cssLayerName: 'clerk',
+  options: {
+    logoPlacement: 'inside' as const,
+    logoLinkUrl: basePath || '/',
+    logoImageUrl: `${window.location.origin}${basePath}/logo.svg`,
+  },
+  variables: {
+    colorPrimary: '#e97861',
+    colorForeground: '#1a2d3b',
+    colorMutedForeground: '#6d7981',
+    colorDanger: '#bd3d3d',
+    colorBackground: '#fffdf8',
+    colorInput: '#fffdf8',
+    colorInputForeground: '#1a2d3b',
+    colorNeutral: '#d9d0c0',
+    fontFamily: 'DM Sans, sans-serif',
+    borderRadius: '0.65rem',
+  },
+  elements: {
+    rootBox: 'w-full flex justify-center',
+    cardBox: 'bg-[#fffdf8] rounded-2xl w-[440px] max-w-full overflow-hidden',
+    card: '!shadow-none !border-0 !bg-transparent !rounded-none',
+    footer: '!shadow-none !border-0 !bg-transparent !rounded-none',
+    headerTitle: 'text-[#1a2d3b]',
+    headerSubtitle: 'text-[#6d7981]',
+    socialButtonsBlockButtonText: 'text-[#1a2d3b]',
+    formFieldLabel: 'text-[#1a2d3b]',
+    footerActionLink: 'text-[#16766a]',
+    footerActionText: 'text-[#6d7981]',
+    dividerText: 'text-[#6d7981]',
+    identityPreviewEditButton: 'text-[#16766a]',
+    formFieldSuccessText: 'text-[#16766a]',
+    alertText: 'text-[#bd3d3d]',
+    logoBox: 'h-12',
+    logoImage: 'max-h-12',
+    socialButtonsBlockButton: 'border-[#d9d0c0] bg-[#fffdf8]',
+    formButtonPrimary: 'bg-[#1a2d3b] text-[#fffdf8]',
+    formFieldInput: 'border-[#d9d0c0] bg-[#fffdf8]',
+    footerAction: 'border-[#d9d0c0]',
+    dividerLine: 'bg-[#d9d0c0]',
+    alert: 'border-[#bd3d3d]',
+    otpCodeFieldInput: 'border-[#d9d0c0]',
+    formFieldRow: 'gap-2',
+    main: 'bg-transparent',
+  },
+};
 
 const navItems = [
   { href: '/', label: 'Overview', icon: LayoutDashboard },
@@ -173,6 +237,8 @@ function Shell({ children }: { children: ReactNode }) {
   const [location] = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [notice, setNotice] = useState('');
+  const { user } = useUser();
+  const { signOut } = useClerk();
   const { data: health } = useHealthCheck({ query: { queryKey: getHealthCheckQueryKey(), staleTime: 60_000 } });
   const current = navItems.find((item) => item.href === location);
   const triggerNotice = (message: string) => {
@@ -221,9 +287,9 @@ function Shell({ children }: { children: ReactNode }) {
             <div><b>Trust layer on</b><span>Candidate data is protected</span></div>
           </div>
           <div className="profile-row">
-            <span className="profile-avatar">AM</span>
-            <span><b>Alex Morgan</b><small>Talent partner</small></span>
-            <MoreHorizontal size={17} className="ml-auto text-sidebar-foreground/50" />
+            <span className="profile-avatar">{(user?.firstName?.[0] ?? 'A')}{(user?.lastName?.[0] ?? 'M')}</span>
+            <span><b>{user?.fullName ?? user?.primaryEmailAddress?.emailAddress ?? 'Talent partner'}</b><small>Workspace member</small></span>
+            <button className="more-button" aria-label="Sign out" onClick={() => signOut({ redirectUrl: basePath || '/' })}><MoreHorizontal size={17} className="text-sidebar-foreground/50" /></button>
           </div>
         </div>
       </aside>
@@ -360,8 +426,102 @@ function Router() {
   return <Shell><ErrorBoundary><Switch><Route path="/" component={Overview} /><Route path="/jobs" component={Jobs} /><Route path="/candidates" component={Candidates} /><Route path="/assessments" component={Assessments} /><Route path="/knowledge" component={Knowledge} /><Route path="/automations" component={Automations} /><Route path="/analytics" component={Analytics} /><Route path="/settings" component={Settings} /><Route component={NotFound} /></Switch></ErrorBoundary></Shell>;
 }
 
+function Landing() {
+  return (
+    <div className="auth-landing noise">
+      <div className="auth-landing-orb" />
+      <div className="auth-landing-inner">
+        <div className="brand-lockup auth-brand"><span className="brand-mark"><span /></span><span><strong>TalentOS</strong><small>Hiring intelligence</small></span></div>
+        <div className="auth-landing-grid">
+          <div>
+            <div className="eyebrow">High-signal hiring</div>
+            <h1 className="auth-landing-title">Turn applicant volume into <span className="serif-accent">clear decisions.</span></h1>
+            <p className="auth-landing-copy">TalentOS brings roles, evidence, technical assessment, and recruiter judgment into one calm command center.</p>
+            <div className="auth-landing-actions">
+              <Link href="/sign-up" className="button-primary">Create workspace <ArrowRight size={16} /></Link>
+              <Link href="/sign-in" className="button-secondary">Sign in</Link>
+            </div>
+          </div>
+          <div className="auth-landing-card">
+            <div className="eyebrow">Your hiring signal</div>
+            <div className="auth-signal-score">82<span>%</span></div>
+            <div className="auth-signal-label">average match confidence</div>
+            <div className="auth-signal-row"><span><i className="legend-dot legend-teal" />Evidence-backed screening</span><b>94%</b></div>
+            <div className="auth-signal-row"><span><i className="legend-dot legend-coral" />Technical signal captured</span><b>84%</b></div>
+            <div className="auth-signal-row"><span><i className="legend-dot legend-amber" />Teams aligned on next steps</span><b>76%</b></div>
+          </div>
+        </div>
+        <div className="auth-landing-foot"><span>Built for modern hiring teams</span><span>Protected workspace access</span><span>Explainable by design</span></div>
+      </div>
+    </div>
+  );
+}
+
+function SignInPage() {
+  return <div className="auth-page"><SignIn routing="path" path={`${basePath}/sign-in`} signUpUrl={`${basePath}/sign-up`} /></div>;
+}
+
+function SignUpPage() {
+  return <div className="auth-page"><SignUp routing="path" path={`${basePath}/sign-up`} signInUrl={`${basePath}/sign-in`} /></div>;
+}
+
+function ClerkQueryClientCacheInvalidator() {
+  const { addListener } = useClerk();
+  const client = useQueryClient();
+  const previousUserId = useRef<string | null | undefined>(undefined);
+
+  useEffect(() => {
+    const unsubscribe = addListener(({ user }) => {
+      const userId = user?.id ?? null;
+      if (previousUserId.current !== undefined && previousUserId.current !== userId) client.clear();
+      previousUserId.current = userId;
+    });
+    return unsubscribe;
+  }, [addListener, client]);
+
+  return null;
+}
+
+function ProtectedRouter() {
+  return (
+    <>
+      <Show when="signed-in"><Router /></Show>
+      <Show when="signed-out"><Redirect to="/" /></Show>
+    </>
+  );
+}
+
+function ClerkRoutes() {
+  const [, setLocation] = useLocation();
+  return (
+    <ClerkProvider
+      publishableKey={clerkPubKey}
+      proxyUrl={clerkProxyUrl}
+      appearance={clerkAppearance}
+      signInUrl={`${basePath}/sign-in`}
+      signUpUrl={`${basePath}/sign-up`}
+      localization={{
+        signIn: { start: { title: 'Welcome back', subtitle: 'Sign in to access your hiring workspace' } },
+        signUp: { start: { title: 'Create your workspace', subtitle: 'Start making hiring decisions with more signal' } },
+      }}
+      routerPush={(to) => setLocation(stripBase(to))}
+      routerReplace={(to) => setLocation(stripBase(to), { replace: true })}
+    >
+      <QueryClientProvider client={queryClient}>
+        <ClerkQueryClientCacheInvalidator />
+        <Switch>
+          <Route path="/sign-in/*?" component={SignInPage} />
+          <Route path="/sign-up/*?" component={SignUpPage} />
+          <Route path="/" component={() => <><Show when="signed-in"><Router /></Show><Show when="signed-out"><Landing /></Show></>} />
+          <Route component={ProtectedRouter} />
+        </Switch>
+      </QueryClientProvider>
+    </ClerkProvider>
+  );
+}
+
 function App() {
-  return <QueryClientProvider client={queryClient}><TooltipProvider><WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}><Router /></WouterRouter><Toaster /></TooltipProvider></QueryClientProvider>;
+  return <TooltipProvider><WouterRouter base={basePath}><ClerkRoutes /></WouterRouter><Toaster /></TooltipProvider>;
 }
 
 export default App;
