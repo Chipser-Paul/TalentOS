@@ -62,6 +62,84 @@ export const ListJobsResponse = zod.array(ListJobsResponseItem)
 
 
 /**
+ * @summary Create a job requisition
+ */
+export const createJobBodyTitleMin = 2;
+
+export const createJobBodyDepartmentMin = 2;
+
+export const createJobBodyLocationMin = 2;
+
+
+
+export const CreateJobBody = zod.object({
+  "title": zod.string().min(createJobBodyTitleMin),
+  "department": zod.string().min(createJobBodyDepartmentMin),
+  "location": zod.string().min(createJobBodyLocationMin),
+  "employmentType": zod.enum(['full_time', 'part_time', 'contract']),
+  "status": zod.enum(['open', 'paused', 'closed']).optional()
+})
+
+export const CreateJobResponse = zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "department": zod.string(),
+  "location": zod.string(),
+  "employmentType": zod.enum(['full_time', 'part_time', 'contract']),
+  "status": zod.enum(['open', 'paused', 'closed']),
+  "applications": zod.number(),
+  "shortlisted": zod.number(),
+  "createdAt": zod.string()
+})
+
+
+/**
+ * @summary Update a job requisition
+ */
+export const UpdateJobParams = zod.object({
+  "jobId": zod.coerce.string()
+})
+
+export const updateJobBodyTitleMin = 2;
+
+export const updateJobBodyDepartmentMin = 2;
+
+export const updateJobBodyLocationMin = 2;
+
+
+
+export const UpdateJobBody = zod.object({
+  "title": zod.string().min(updateJobBodyTitleMin).optional(),
+  "department": zod.string().min(updateJobBodyDepartmentMin).optional(),
+  "location": zod.string().min(updateJobBodyLocationMin).optional(),
+  "employmentType": zod.enum(['full_time', 'part_time', 'contract']).optional(),
+  "status": zod.enum(['open', 'paused', 'closed']).optional()
+})
+
+export const UpdateJobResponse = zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "department": zod.string(),
+  "location": zod.string(),
+  "employmentType": zod.enum(['full_time', 'part_time', 'contract']),
+  "status": zod.enum(['open', 'paused', 'closed']),
+  "applications": zod.number(),
+  "shortlisted": zod.number(),
+  "createdAt": zod.string()
+})
+
+
+/**
+ * @summary Delete a job requisition
+ */
+export const DeleteJobParams = zod.object({
+  "jobId": zod.coerce.string()
+})
+
+export const DeleteJobResponse = zod.void()
+
+
+/**
  * @summary List candidates in the hiring workspace
  */
 export const ListCandidatesResponseItem = zod.object({
@@ -80,6 +158,125 @@ export const ListCandidatesResponse = zod.array(ListCandidatesResponseItem)
 
 
 /**
+ * @summary Create a candidate profile
+ */
+export const createCandidateBodyNameMin = 2;
+
+export const createCandidateBodyRoleMin = 2;
+
+export const createCandidateBodyLocationMin = 2;
+
+
+
+
+export const CreateCandidateBody = zod.object({
+  "name": zod.string().min(createCandidateBodyNameMin),
+  "role": zod.string().min(createCandidateBodyRoleMin),
+  "location": zod.string().min(createCandidateBodyLocationMin),
+  "status": zod.enum(['new', 'screening', 'assessment', 'interview', 'shortlisted', 'rejected']).optional(),
+  "skills": zod.array(zod.string()).min(1)
+})
+
+export const CreateCandidateResponse = zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "role": zod.string(),
+  "location": zod.string(),
+  "matchScore": zod.number(),
+  "technicalScore": zod.number(),
+  "interviewScore": zod.number(),
+  "status": zod.enum(['new', 'screening', 'assessment', 'interview', 'shortlisted', 'rejected']),
+  "skills": zod.array(zod.string()),
+  "appliedAt": zod.string()
+})
+
+
+/**
+ * @summary Update a candidate profile
+ */
+export const UpdateCandidateParams = zod.object({
+  "candidateId": zod.coerce.string()
+})
+
+export const updateCandidateBodyNameMin = 2;
+
+export const updateCandidateBodyRoleMin = 2;
+
+export const updateCandidateBodyLocationMin = 2;
+
+
+
+
+export const UpdateCandidateBody = zod.object({
+  "name": zod.string().min(updateCandidateBodyNameMin).optional(),
+  "role": zod.string().min(updateCandidateBodyRoleMin).optional(),
+  "location": zod.string().min(updateCandidateBodyLocationMin).optional(),
+  "status": zod.enum(['new', 'screening', 'assessment', 'interview', 'shortlisted', 'rejected']).optional(),
+  "skills": zod.array(zod.string()).min(1).optional()
+})
+
+export const UpdateCandidateResponse = zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "role": zod.string(),
+  "location": zod.string(),
+  "matchScore": zod.number(),
+  "technicalScore": zod.number(),
+  "interviewScore": zod.number(),
+  "status": zod.enum(['new', 'screening', 'assessment', 'interview', 'shortlisted', 'rejected']),
+  "skills": zod.array(zod.string()),
+  "appliedAt": zod.string()
+})
+
+
+/**
+ * @summary Delete a candidate profile
+ */
+export const DeleteCandidateParams = zod.object({
+  "candidateId": zod.coerce.string()
+})
+
+export const DeleteCandidateResponse = zod.void()
+
+
+/**
+ * @summary Evaluate a candidate for a specific job
+ */
+export const EvaluateCandidateForJobParams = zod.object({
+  "candidateId": zod.coerce.string(),
+  "jobId": zod.coerce.string()
+})
+
+export const evaluateCandidateForJobResponseOverallScoreMin = 0;
+export const evaluateCandidateForJobResponseOverallScoreMax = 100;
+
+export const evaluateCandidateForJobResponseSkillsScoreMin = 0;
+export const evaluateCandidateForJobResponseSkillsScoreMax = 100;
+
+export const evaluateCandidateForJobResponseExperienceScoreMin = 0;
+export const evaluateCandidateForJobResponseExperienceScoreMax = 100;
+
+export const evaluateCandidateForJobResponseEducationScoreMin = 0;
+export const evaluateCandidateForJobResponseEducationScoreMax = 100;
+
+
+export const evaluateCandidateForJobResponseSummaryMin = 10;
+
+
+
+export const EvaluateCandidateForJobResponse = zod.object({
+  "overallScore": zod.number().min(evaluateCandidateForJobResponseOverallScoreMin).max(evaluateCandidateForJobResponseOverallScoreMax),
+  "skillsScore": zod.number().min(evaluateCandidateForJobResponseSkillsScoreMin).max(evaluateCandidateForJobResponseSkillsScoreMax),
+  "experienceScore": zod.number().min(evaluateCandidateForJobResponseExperienceScoreMin).max(evaluateCandidateForJobResponseExperienceScoreMax),
+  "educationScore": zod.number().min(evaluateCandidateForJobResponseEducationScoreMin).max(evaluateCandidateForJobResponseEducationScoreMax),
+  "strengths": zod.array(zod.string()).min(1),
+  "gaps": zod.array(zod.string()),
+  "recommendation": zod.enum(['strong_match', 'potential_match', 'weak_match']),
+  "summary": zod.string().min(evaluateCandidateForJobResponseSummaryMin)
+})
+
+
+/**
  * @summary List technical assessments
  */
 export const ListAssessmentsResponseItem = zod.object({
@@ -92,6 +289,72 @@ export const ListAssessmentsResponseItem = zod.object({
   "status": zod.enum(['draft', 'active', 'archived'])
 })
 export const ListAssessmentsResponse = zod.array(ListAssessmentsResponseItem)
+
+
+/**
+ * @summary Create a technical assessment
+ */
+export const createAssessmentBodyTitleMin = 2;
+
+export const createAssessmentBodyRoleMin = 2;
+
+
+
+export const CreateAssessmentBody = zod.object({
+  "title": zod.string().min(createAssessmentBodyTitleMin),
+  "role": zod.string().min(createAssessmentBodyRoleMin),
+  "status": zod.enum(['draft', 'active', 'archived']).optional()
+})
+
+export const CreateAssessmentResponse = zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "role": zod.string(),
+  "submissions": zod.number(),
+  "completionRate": zod.number(),
+  "averageScore": zod.number(),
+  "status": zod.enum(['draft', 'active', 'archived'])
+})
+
+
+/**
+ * @summary Update a technical assessment
+ */
+export const UpdateAssessmentParams = zod.object({
+  "assessmentId": zod.coerce.string()
+})
+
+export const updateAssessmentBodyTitleMin = 2;
+
+export const updateAssessmentBodyRoleMin = 2;
+
+
+
+export const UpdateAssessmentBody = zod.object({
+  "title": zod.string().min(updateAssessmentBodyTitleMin).optional(),
+  "role": zod.string().min(updateAssessmentBodyRoleMin).optional(),
+  "status": zod.enum(['draft', 'active', 'archived']).optional()
+})
+
+export const UpdateAssessmentResponse = zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "role": zod.string(),
+  "submissions": zod.number(),
+  "completionRate": zod.number(),
+  "averageScore": zod.number(),
+  "status": zod.enum(['draft', 'active', 'archived'])
+})
+
+
+/**
+ * @summary Delete a technical assessment
+ */
+export const DeleteAssessmentParams = zod.object({
+  "assessmentId": zod.coerce.string()
+})
+
+export const DeleteAssessmentResponse = zod.void()
 
 
 /**
@@ -109,6 +372,92 @@ export const ListKnowledgeSourcesResponse = zod.array(ListKnowledgeSourcesRespon
 
 
 /**
+ * @summary Create a knowledge source
+ */
+export const createKnowledgeSourceBodyNameMin = 2;
+
+
+
+export const CreateKnowledgeSourceBody = zod.object({
+  "name": zod.string().min(createKnowledgeSourceBodyNameMin),
+  "kind": zod.enum(['policy', 'job_description', 'interview_guide', 'technical_document']),
+  "status": zod.enum(['ready', 'processing', 'needs_review']).optional()
+})
+
+export const CreateKnowledgeSourceResponse = zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "kind": zod.enum(['policy', 'job_description', 'interview_guide', 'technical_document']),
+  "chunks": zod.number(),
+  "updatedAt": zod.string(),
+  "status": zod.enum(['ready', 'processing', 'needs_review'])
+})
+
+
+/**
+ * @summary Update a knowledge source
+ */
+export const UpdateKnowledgeSourceParams = zod.object({
+  "sourceId": zod.coerce.string()
+})
+
+export const updateKnowledgeSourceBodyNameMin = 2;
+
+
+
+export const UpdateKnowledgeSourceBody = zod.object({
+  "name": zod.string().min(updateKnowledgeSourceBodyNameMin).optional(),
+  "kind": zod.enum(['policy', 'job_description', 'interview_guide', 'technical_document']).optional(),
+  "status": zod.enum(['ready', 'processing', 'needs_review']).optional()
+})
+
+export const UpdateKnowledgeSourceResponse = zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "kind": zod.enum(['policy', 'job_description', 'interview_guide', 'technical_document']),
+  "chunks": zod.number(),
+  "updatedAt": zod.string(),
+  "status": zod.enum(['ready', 'processing', 'needs_review'])
+})
+
+
+/**
+ * @summary Delete a knowledge source
+ */
+export const DeleteKnowledgeSourceParams = zod.object({
+  "sourceId": zod.coerce.string()
+})
+
+export const DeleteKnowledgeSourceResponse = zod.void()
+
+
+/**
+ * @summary Query knowledge sources with RAG
+ */
+export const queryKnowledgeBodyQueryMin = 2;
+
+
+
+export const QueryKnowledgeBody = zod.object({
+  "query": zod.string().min(queryKnowledgeBodyQueryMin)
+})
+
+export const queryKnowledgeResponseAnswerMin = 10;
+
+
+
+
+export const QueryKnowledgeResponse = zod.object({
+  "answer": zod.string().min(queryKnowledgeResponseAnswerMin),
+  "sources": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "kind": zod.string()
+})).min(1)
+})
+
+
+/**
  * @summary List recruitment automations
  */
 export const ListAutomationsResponseItem = zod.object({
@@ -120,6 +469,70 @@ export const ListAutomationsResponseItem = zod.object({
   "status": zod.enum(['active', 'paused', 'draft'])
 })
 export const ListAutomationsResponse = zod.array(ListAutomationsResponseItem)
+
+
+/**
+ * @summary Create an automation
+ */
+export const createAutomationBodyNameMin = 2;
+
+export const createAutomationBodyTriggerMin = 2;
+
+
+
+export const CreateAutomationBody = zod.object({
+  "name": zod.string().min(createAutomationBodyNameMin),
+  "trigger": zod.string().min(createAutomationBodyTriggerMin),
+  "status": zod.enum(['active', 'paused', 'draft']).optional()
+})
+
+export const CreateAutomationResponse = zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "trigger": zod.string(),
+  "steps": zod.number(),
+  "runsThisMonth": zod.number(),
+  "status": zod.enum(['active', 'paused', 'draft'])
+})
+
+
+/**
+ * @summary Update an automation
+ */
+export const UpdateAutomationParams = zod.object({
+  "automationId": zod.coerce.string()
+})
+
+export const updateAutomationBodyNameMin = 2;
+
+export const updateAutomationBodyTriggerMin = 2;
+
+
+
+export const UpdateAutomationBody = zod.object({
+  "name": zod.string().min(updateAutomationBodyNameMin).optional(),
+  "trigger": zod.string().min(updateAutomationBodyTriggerMin).optional(),
+  "status": zod.enum(['active', 'paused', 'draft']).optional()
+})
+
+export const UpdateAutomationResponse = zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "trigger": zod.string(),
+  "steps": zod.number(),
+  "runsThisMonth": zod.number(),
+  "status": zod.enum(['active', 'paused', 'draft'])
+})
+
+
+/**
+ * @summary Delete an automation
+ */
+export const DeleteAutomationParams = zod.object({
+  "automationId": zod.coerce.string()
+})
+
+export const DeleteAutomationResponse = zod.void()
 
 
 /**

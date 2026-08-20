@@ -68,6 +68,64 @@ export interface Job {
   createdAt: string;
 }
 
+export type CreateJobInputEmploymentType = typeof CreateJobInputEmploymentType[keyof typeof CreateJobInputEmploymentType];
+
+
+export const CreateJobInputEmploymentType = {
+  full_time: 'full_time',
+  part_time: 'part_time',
+  contract: 'contract',
+} as const;
+
+export type CreateJobInputStatus = typeof CreateJobInputStatus[keyof typeof CreateJobInputStatus];
+
+
+export const CreateJobInputStatus = {
+  open: 'open',
+  paused: 'paused',
+  closed: 'closed',
+} as const;
+
+export interface CreateJobInput {
+  /** @minLength 2 */
+  title: string;
+  /** @minLength 2 */
+  department: string;
+  /** @minLength 2 */
+  location: string;
+  employmentType: CreateJobInputEmploymentType;
+  status?: CreateJobInputStatus;
+}
+
+export type UpdateJobInputEmploymentType = typeof UpdateJobInputEmploymentType[keyof typeof UpdateJobInputEmploymentType];
+
+
+export const UpdateJobInputEmploymentType = {
+  full_time: 'full_time',
+  part_time: 'part_time',
+  contract: 'contract',
+} as const;
+
+export type UpdateJobInputStatus = typeof UpdateJobInputStatus[keyof typeof UpdateJobInputStatus];
+
+
+export const UpdateJobInputStatus = {
+  open: 'open',
+  paused: 'paused',
+  closed: 'closed',
+} as const;
+
+export interface UpdateJobInput {
+  /** @minLength 2 */
+  title?: string;
+  /** @minLength 2 */
+  department?: string;
+  /** @minLength 2 */
+  location?: string;
+  employmentType?: UpdateJobInputEmploymentType;
+  status?: UpdateJobInputStatus;
+}
+
 export type CandidateStatus = typeof CandidateStatus[keyof typeof CandidateStatus];
 
 
@@ -93,6 +151,54 @@ export interface Candidate {
   appliedAt: string;
 }
 
+export type CreateCandidateInputStatus = typeof CreateCandidateInputStatus[keyof typeof CreateCandidateInputStatus];
+
+
+export const CreateCandidateInputStatus = {
+  new: 'new',
+  screening: 'screening',
+  assessment: 'assessment',
+  interview: 'interview',
+  shortlisted: 'shortlisted',
+  rejected: 'rejected',
+} as const;
+
+export interface CreateCandidateInput {
+  /** @minLength 2 */
+  name: string;
+  /** @minLength 2 */
+  role: string;
+  /** @minLength 2 */
+  location: string;
+  status?: CreateCandidateInputStatus;
+  /** @minItems 1 */
+  skills: string[];
+}
+
+export type UpdateCandidateInputStatus = typeof UpdateCandidateInputStatus[keyof typeof UpdateCandidateInputStatus];
+
+
+export const UpdateCandidateInputStatus = {
+  new: 'new',
+  screening: 'screening',
+  assessment: 'assessment',
+  interview: 'interview',
+  shortlisted: 'shortlisted',
+  rejected: 'rejected',
+} as const;
+
+export interface UpdateCandidateInput {
+  /** @minLength 2 */
+  name?: string;
+  /** @minLength 2 */
+  role?: string;
+  /** @minLength 2 */
+  location?: string;
+  status?: UpdateCandidateInputStatus;
+  /** @minItems 1 */
+  skills?: string[];
+}
+
 export type AssessmentStatus = typeof AssessmentStatus[keyof typeof AssessmentStatus];
 
 
@@ -110,6 +216,164 @@ export interface Assessment {
   completionRate: number;
   averageScore: number;
   status: AssessmentStatus;
+}
+
+export type CreateAssessmentInputStatus = typeof CreateAssessmentInputStatus[keyof typeof CreateAssessmentInputStatus];
+
+
+export const CreateAssessmentInputStatus = {
+  draft: 'draft',
+  active: 'active',
+  archived: 'archived',
+} as const;
+
+export interface CreateAssessmentInput {
+  /** @minLength 2 */
+  title: string;
+  /** @minLength 2 */
+  role: string;
+  status?: CreateAssessmentInputStatus;
+}
+
+export type UpdateAssessmentInputStatus = typeof UpdateAssessmentInputStatus[keyof typeof UpdateAssessmentInputStatus];
+
+
+export const UpdateAssessmentInputStatus = {
+  draft: 'draft',
+  active: 'active',
+  archived: 'archived',
+} as const;
+
+export interface UpdateAssessmentInput {
+  /** @minLength 2 */
+  title?: string;
+  /** @minLength 2 */
+  role?: string;
+  status?: UpdateAssessmentInputStatus;
+}
+
+export type CandidateEvaluationRecommendation = typeof CandidateEvaluationRecommendation[keyof typeof CandidateEvaluationRecommendation];
+
+
+export const CandidateEvaluationRecommendation = {
+  strong_match: 'strong_match',
+  potential_match: 'potential_match',
+  weak_match: 'weak_match',
+} as const;
+
+export interface CandidateEvaluation {
+  /**
+     * @minimum 0
+     * @maximum 100
+     */
+  overallScore: number;
+  /**
+     * @minimum 0
+     * @maximum 100
+     */
+  skillsScore: number;
+  /**
+     * @minimum 0
+     * @maximum 100
+     */
+  experienceScore: number;
+  /**
+     * @minimum 0
+     * @maximum 100
+     */
+  educationScore: number;
+  /** @minItems 1 */
+  strengths: string[];
+  gaps: string[];
+  recommendation: CandidateEvaluationRecommendation;
+  /** @minLength 10 */
+  summary: string;
+}
+
+export type CreateKnowledgeSourceInputKind = typeof CreateKnowledgeSourceInputKind[keyof typeof CreateKnowledgeSourceInputKind];
+
+
+export const CreateKnowledgeSourceInputKind = {
+  policy: 'policy',
+  job_description: 'job_description',
+  interview_guide: 'interview_guide',
+  technical_document: 'technical_document',
+} as const;
+
+export type CreateKnowledgeSourceInputStatus = typeof CreateKnowledgeSourceInputStatus[keyof typeof CreateKnowledgeSourceInputStatus];
+
+
+export const CreateKnowledgeSourceInputStatus = {
+  ready: 'ready',
+  processing: 'processing',
+  needs_review: 'needs_review',
+} as const;
+
+export interface CreateKnowledgeSourceInput {
+  /** @minLength 2 */
+  name: string;
+  kind: CreateKnowledgeSourceInputKind;
+  status?: CreateKnowledgeSourceInputStatus;
+}
+
+export type UpdateKnowledgeSourceInputKind = typeof UpdateKnowledgeSourceInputKind[keyof typeof UpdateKnowledgeSourceInputKind];
+
+
+export const UpdateKnowledgeSourceInputKind = {
+  policy: 'policy',
+  job_description: 'job_description',
+  interview_guide: 'interview_guide',
+  technical_document: 'technical_document',
+} as const;
+
+export type UpdateKnowledgeSourceInputStatus = typeof UpdateKnowledgeSourceInputStatus[keyof typeof UpdateKnowledgeSourceInputStatus];
+
+
+export const UpdateKnowledgeSourceInputStatus = {
+  ready: 'ready',
+  processing: 'processing',
+  needs_review: 'needs_review',
+} as const;
+
+export interface UpdateKnowledgeSourceInput {
+  /** @minLength 2 */
+  name?: string;
+  kind?: UpdateKnowledgeSourceInputKind;
+  status?: UpdateKnowledgeSourceInputStatus;
+}
+
+export type CreateAutomationInputStatus = typeof CreateAutomationInputStatus[keyof typeof CreateAutomationInputStatus];
+
+
+export const CreateAutomationInputStatus = {
+  active: 'active',
+  paused: 'paused',
+  draft: 'draft',
+} as const;
+
+export interface CreateAutomationInput {
+  /** @minLength 2 */
+  name: string;
+  /** @minLength 2 */
+  trigger: string;
+  status?: CreateAutomationInputStatus;
+}
+
+export type UpdateAutomationInputStatus = typeof UpdateAutomationInputStatus[keyof typeof UpdateAutomationInputStatus];
+
+
+export const UpdateAutomationInputStatus = {
+  active: 'active',
+  paused: 'paused',
+  draft: 'draft',
+} as const;
+
+export interface UpdateAutomationInput {
+  /** @minLength 2 */
+  name?: string;
+  /** @minLength 2 */
+  trigger?: string;
+  status?: UpdateAutomationInputStatus;
 }
 
 export type KnowledgeSourceKind = typeof KnowledgeSourceKind[keyof typeof KnowledgeSourceKind];
@@ -162,5 +426,23 @@ export interface FunnelStage {
   label: string;
   count: number;
   conversionRate: number;
+}
+
+export interface RagSource {
+  id: string;
+  name: string;
+  kind: string;
+}
+
+export interface RagQueryResponse {
+  /** @minLength 10 */
+  answer: string;
+  /** @minItems 1 */
+  sources: RagSource[];
+}
+
+export interface QueryKnowledgeInput {
+  /** @minLength 2 */
+  query: string;
 }
 

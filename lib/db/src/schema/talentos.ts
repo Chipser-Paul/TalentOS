@@ -53,6 +53,7 @@ export const talentosKnowledgeSourcesTable = pgTable("talentos_knowledge_sources
   workspaceId: text("workspace_id").notNull().references(() => talentosWorkspacesTable.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
   kind: text("kind").notNull(),
+  content: text("content").notNull().default(""),
   chunks: integer("chunks").notNull().default(0),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
   status: text("status").notNull(),

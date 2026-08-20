@@ -2,6 +2,31 @@
 
 TalentOS is an AI-powered recruitment and developer evaluation platform for high-signal hiring decisions.
 
+## Environment Setup
+
+1. Copy `.env.example` to `.env`
+2. Replace placeholders with your local values
+3. Never commit `.env` to version control
+4. Requires a PostgreSQL database
+5. Requires a Clerk application with publishable and secret keys
+
+### Local Development Ports
+
+Each service uses its own port variable to avoid conflicts:
+
+- Backend: `PORT=5000`
+- TalentOS frontend: `VITE_PORT=5173`
+- Mockup sandbox: `MOCKUP_PORT=5174`
+
+### CORS Origins
+
+`ALLOWED_ORIGINS` controls which browser origins can call the API.
+
+- Format: comma-separated list, e.g. `http://localhost:5173,http://localhost:5174`
+- In development, if unset, the API safely allows `http://localhost:5173` and `http://localhost:5174`
+- In production, `ALLOWED_ORIGINS` must be explicitly set to the approved frontend origin(s)
+- Requests without an `Origin` header (curl, server-to-server, health probes) are always allowed
+
 ## Run & Operate
 
 - `pnpm --filter @workspace/api-server run dev` — run the API server (port 5000)
@@ -42,6 +67,47 @@ TalentOS is an AI-powered recruitment and developer evaluation platform for high
 ## Product
 
 TalentOS helps hiring teams create roles, screen candidates, run technical assessments, consult recruitment knowledge, automate handoffs, and understand funnel performance.
+
+## API surface
+
+The API now supports full CRUD for Jobs, Candidates, Assessments, Knowledge Sources, and Automations. Each mutation is validated with Zod and scoped to the authenticated user's workspace. See `docs/API.md` for the current endpoint inventory.
+
+## Roadmap note
+
+Document embeddings/vector search and automation execution remain planned and are not yet implemented.
+
+## AI evaluation
+
+The API includes an optional candidate-to-job evaluation endpoint:
+
+- `POST /candidates/{candidateId}/evaluate/{jobId}`
+- Requires `OPENAI_API_KEY` and optionally `OPENAI_MODEL`
+- Returns structured scoring and recommendation data
+- This is decision support only; it does not make autonomous hiring decisions
+
+## Knowledge RAG
+
+The Knowledge page includes a grounded Q&A assistant:
+
+- `POST /knowledge/query`
+- Uses PostgreSQL full-text search to retrieve relevant knowledge sources scoped to the workspace
+- Grounds the LLM answer only in retrieved sources
+- Returns `answer` plus cited `sources`
+- Requires `OPENAI_API_KEY`
+- If no relevant knowledge is found, the response explicitly states that the available knowledge does not answer the question
+
+## Tool layer and MCP
+
+A minimal internal tool abstraction and MCP-style server are implemented for read-only workspace data access:
+
+- Tools: `get_candidate`, `list_candidates`, `get_job`, `list_jobs`, `list_knowledge_sources`, `get_dashboard_metrics`
+- All tools enforce workspace isolation
+- No destructive or mutation operations are exposed through the tool layer
+
+## Testing
+
+- `pnpm --filter @workspace/api-server run test` — run API tests
+- `pnpm --filter @workspace/api-server run test:watch` — watch mode
 
 ## User preferences
 

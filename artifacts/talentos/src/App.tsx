@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
 import { ClerkProvider, Show, SignIn, SignUp, useClerk, useUser } from '@clerk/react';
 import { publishableKeyFromHost } from '@clerk/react/internal';
@@ -30,6 +30,7 @@ import {
   MapPin,
   Menu,
   MoreHorizontal,
+  Pencil,
   Plus,
   RefreshCw,
   Search,
@@ -39,7 +40,9 @@ import {
   Sparkles,
   UserRound,
   UsersRound,
+  Trash2,
   Workflow,
+  Brain,
   X,
   Zap,
 } from 'lucide-react';
@@ -57,12 +60,27 @@ import {
   useGetDashboardActivity,
   useGetDashboardSummary,
   useHealthCheck,
+  useEvaluateCandidateForJob,
+  useCreateCandidate,
+  useCreateAssessment,
+  useCreateJob,
+  useCreateKnowledgeSource,
+  useCreateAutomation,
+  useDeleteCandidate,
+  useDeleteAssessment,
+  useDeleteJob,
+  useDeleteKnowledgeSource,
+  useDeleteAutomation,
   useListAssessments,
   useListAutomations,
   useListCandidates,
   useListJobs,
   useListKnowledgeSources,
+  useQueryKnowledge,
+  useUpdateKnowledgeSource,
+  useUpdateAutomation,
 } from '@workspace/api-client-react';
+import type { Candidate } from '@workspace/api-client-react';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
@@ -378,18 +396,75 @@ function Jobs() {
 }
 
 function Candidates() {
-  const query = useListCandidates({ query: { queryKey: getListCandidatesQueryKey() } });
+  const queryClient = useQueryClient();
+  const candidatesQuery = useListCandidates({ query: { queryKey: getListCandidatesQueryKey() } });
+  const jobsQuery = useListJobs({ query: { queryKey: getListJobsQueryKey() } });
   const [search, setSearch] = useState('');
   const [stage, setStage] = useState('all');
-  const candidates = query.data ?? [];
+  const candidates = candidatesQuery.data ?? [];
+  const jobs = jobsQuery.data ?? [];
   const filtered = useMemo(() => candidates.filter((candidate) => (stage === 'all' || candidate.status === stage) && `${candidate.name} ${candidate.role} ${candidate.skills.join(' ')}`.toLowerCase().includes(search.toLowerCase())), [candidates, search, stage]);
+  const [evaluateOpen, setEvaluateOpen] = useState(false);
+  const [evaluateCandidate, setEvaluateCandidate] = useState<Candidate | null>(null);
+  const [evaluateJobId, setEvaluateJobId] = useState('');
+  const [evaluationResult, setEvaluationResult] = useState<{ overallScore: number; skillsScore: number; experienceScore: number; educationScore: number; strengths: string[]; gaps: string[]; recommendation: string; summary: string } | null>(null);
+  const [evaluationError, setEvaluationError] = useState<string | null>(null);
+  const evaluateMutation = useEvaluateCandidateForJob({
+    mutation: {
+      onSuccess: (data) => {
+        setEvaluationResult(data);
+        setEvaluationError(null);
+      },
+      onError: () => setEvaluationError('AI evaluation failed. Please try again.'),
+    },
+  });
+  const openEvaluate = (candidate: Candidate) => {
+    setEvaluateCandidate(candidate);
+    setEvaluateJobId('');
+    setEvaluationResult(null);
+    setEvaluationError(null);
+    setEvaluateOpen(true);
+  };
+  const submitEvaluate = () => {
+    if (!evaluateCandidate || !evaluateJobId) return;
+    setEvaluationError(null);
+    setEvaluationResult(null);
+    evaluateMutation.mutate({ candidateId: evaluateCandidate.id, jobId: evaluateJobId });
+  };
+  const recommendationLabel = evaluationResult?.recommendation === 'strong_match' ? 'Strong match' : evaluationResult?.recommendation === 'potential_match' ? 'Potential match' : evaluationResult?.recommendation === 'weak_match' ? 'Weak match' : '—';
   return <div className="page-content">
     <SectionHeader eyebrow="Signal review" title="Candidates" description="Review the evidence behind every candidate, not just a resume headline." action={<button className="button-primary" data-testid="button-invite-candidate" onClick={() => window.alert('Candidate invite flow is coming in the next workspace release.')}><Plus size={16} /> Invite candidate</button>} />
     <div className="candidate-summary"><div><span className="eyebrow">In your review queue</span><b>{filtered.length} candidates</b></div><div className="summary-divider" /><div><span className="eyebrow">High confidence</span><b>{candidates.filter((candidate) => candidate.matchScore >= 85).length} matches above 85%</b></div><div className="summary-spacer" /><div className="confidence-legend"><span><i className="legend-dot legend-teal" />Match score</span><span><i className="legend-dot legend-coral" />Interview signal</span></div></div>
     <div className="toolbar"><div className="search-box"><Search size={16} /><input data-testid="input-search-candidates" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search people, roles, or skills" /></div><div className="filter-group"><Filter size={15} /><select data-testid="select-candidate-stage" value={stage} onChange={(event) => setStage(event.target.value)}><option value="all">All stages</option><option value="new">New</option><option value="screening">Screening</option><option value="assessment">Assessment</option><option value="interview">Interview</option><option value="shortlisted">Shortlisted</option></select></div></div>
-    <DataState loading={query.isLoading} error={query.isError} empty={!filtered.length} onRetry={() => query.refetch()}>
-      <div className="candidate-table-wrap"><table className="candidate-table"><thead><tr><th>Candidate</th><th>Match</th><th>Technical</th><th>Interview</th><th>Stage</th><th>Applied</th><th /></tr></thead><tbody>{filtered.map((candidate) => <tr key={candidate.id} data-testid={`row-candidate-${candidate.id}`}><td><div className="candidate-cell"><span className="initial-avatar">{candidate.name.split(' ').map((part) => part[0]).join('').slice(0, 2)}</span><div><b>{candidate.name}</b><span>{candidate.role} · {candidate.location}</span><div className="skill-line">{candidate.skills.slice(0, 3).map((skill) => <em key={skill}>{skill}</em>)}</div></div></div></td><td><div className="score-wrap"><span className={`score score-${candidate.matchScore >= 85 ? 'high' : candidate.matchScore >= 70 ? 'mid' : 'low'}`}>{candidate.matchScore}%</span><i className="score-track"><em style={{ width: `${candidate.matchScore}%` }} /></i></div></td><td><span className="table-score">{candidate.technicalScore}%</span></td><td><span className="table-score">{candidate.interviewScore}%</span></td><td><StatusPill value={candidate.status} /></td><td className="date-cell">{formatDate(candidate.appliedAt)}</td><td><button className="more-button" data-testid={`button-candidate-menu-${candidate.id}`} onClick={() => window.alert(`Candidate profile: ${candidate.name}`)}><MoreHorizontal size={17} /></button></td></tr>)}</tbody></table></div>
+    <DataState loading={candidatesQuery.isLoading} error={candidatesQuery.isError} empty={!filtered.length} onRetry={() => candidatesQuery.refetch()}>
+      <div className="candidate-table-wrap"><table className="candidate-table"><thead><tr><th>Candidate</th><th>Match</th><th>Technical</th><th>Interview</th><th>Stage</th><th>Applied</th><th /></tr></thead><tbody>{filtered.map((candidate) => <tr key={candidate.id} data-testid={`row-candidate-${candidate.id}`}><td><div className="candidate-cell"><span className="initial-avatar">{candidate.name.split(' ').map((part) => part[0]).join('').slice(0, 2)}</span><div><b>{candidate.name}</b><span>{candidate.role} · {candidate.location}</span><div className="skill-line">{candidate.skills.slice(0, 3).map((skill) => <em key={skill}>{skill}</em>)}</div></div></div></td><td><div className="score-wrap"><span className={`score score-${candidate.matchScore >= 85 ? 'high' : candidate.matchScore >= 70 ? 'mid' : 'low'}`}>{candidate.matchScore}%</span><i className="score-track"><em style={{ width: `${candidate.matchScore}%` }} /></i></div></td><td><span className="table-score">{candidate.technicalScore}%</span></td><td><span className="table-score">{candidate.interviewScore}%</span></td><td><StatusPill value={candidate.status} /></td><td className="date-cell">{formatDate(candidate.appliedAt)}</td><td><button className="more-button" data-testid={`button-candidate-menu-${candidate.id}`} onClick={() => window.alert(`Candidate profile: ${candidate.name}`)}><MoreHorizontal size={17} /></button><button className="button-secondary" data-testid={`button-evaluate-candidate-${candidate.id}`} onClick={() => openEvaluate(candidate)}><Brain size={15} /> Evaluate</button></td></tr>)}</tbody></table></div>
     </DataState>
+    {evaluateOpen && <FormDialog title={evaluateCandidate ? `Evaluate ${evaluateCandidate.name}` : 'Evaluate candidate'} description="Select a job and run an AI fit evaluation." open={evaluateOpen} saving={evaluateMutation.isPending} error={evaluationError ?? null} onClose={() => setEvaluateOpen(false)}>
+      <label>Job
+        <select data-testid="select-evaluate-job" value={evaluateJobId} onChange={(event) => setEvaluateJobId(event.target.value)}>
+          <option value="">Select a job</option>
+          {jobs.map((job) => <option key={job.id} value={job.id}>{job.title} — {job.department}</option>)}
+        </select>
+      </label>
+      {evaluationResult && <div className="evaluation-result">
+        <div className="evaluation-scores">
+          <div><b>{evaluationResult.overallScore}</b><span>Overall</span></div>
+          <div><b>{evaluationResult.skillsScore}</b><span>Skills</span></div>
+          <div><b>{evaluationResult.experienceScore}</b><span>Experience</span></div>
+          <div><b>{evaluationResult.educationScore}</b><span>Education</span></div>
+        </div>
+        <div className="evaluation-recommendation"><StatusPill value={recommendationLabel.toLowerCase().replace(' ', '_')} /><span>{recommendationLabel}</span></div>
+        <div className="evaluation-details">
+          <div><b>Strengths</b>{evaluationResult.strengths.map((item) => <span key={item}>{item}</span>)}</div>
+          <div><b>Gaps</b>{evaluationResult.gaps.map((item) => <span key={item}>{item}</span>)}</div>
+          <p>{evaluationResult.summary}</p>
+        </div>
+      </div>}
+      <div className="form-dialog-actions">
+        <button type="button" className="button-secondary" onClick={() => setEvaluateOpen(false)}>Close</button>
+        <button type="button" className="button-primary" disabled={evaluateMutation.isPending || !evaluateJobId} data-testid="button-run-evaluation" onClick={submitEvaluate}>{evaluateMutation.isPending ? 'Evaluating…' : 'Run evaluation'}</button>
+      </div>
+    </FormDialog>}
   </div>;
 }
 
@@ -399,16 +474,329 @@ function Assessments() {
   return <div className="page-content"><SectionHeader eyebrow="Technical signal" title="Assessments" description="Build confidence in craft with consistent, role-specific evidence." action={<button className="button-primary" data-testid="button-new-assessment" onClick={() => window.alert('Assessment builder is coming in the next workspace release.')}><Plus size={16} /> New assessment</button>} /><DataState loading={query.isLoading} error={query.isError} empty={!assessments.length} onRetry={() => query.refetch()}><div className="assessment-grid">{assessments.map((assessment, index) => <article className={`assessment-card rise-in delay-${Math.min(index + 1, 3)}`} key={assessment.id} data-testid={`card-assessment-${assessment.id}`}><div className="assessment-top"><div className="assessment-symbol"><Code2 size={19} /></div><StatusPill value={assessment.status} /><button className="more-button" data-testid={`button-assessment-menu-${assessment.id}`} onClick={() => window.alert(`Actions for ${assessment.title}`)}><MoreHorizontal size={17} /></button></div><h2>{assessment.title}</h2><span className="assessment-role">{assessment.role}</span><div className="assessment-stats"><div><span>Submissions</span><b>{assessment.submissions}</b></div><div><span>Completion</span><b>{assessment.completionRate}%</b></div><div><span>Avg. score</span><b className="teal-number">{assessment.averageScore}%</b></div></div><div className="progress-track"><i style={{ width: `${assessment.completionRate}%` }} /></div><div className="assessment-footer"><span><Activity size={13} /> Evidence is current</span><ArrowUpRight size={15} /></div></article>)}</div></DataState></div>;
 }
 
+type KnowledgeSourceFormValues = {
+  name: string;
+  kind: 'policy' | 'job_description' | 'interview_guide' | 'technical_document';
+  status: 'ready' | 'processing' | 'needs_review';
+};
+
+type AutomationFormValues = {
+  name: string;
+  trigger: string;
+  status: 'active' | 'paused' | 'draft';
+};
+
+function FormDialog({ title, description, open, saving, error, onClose, children }: {
+  title: string;
+  description?: string;
+  open: boolean;
+  saving: boolean;
+  error: string | null;
+  onClose: () => void;
+  children: ReactNode;
+}) {
+  if (!open) return null;
+  return (
+    <div className="dialog-backdrop" onClick={() => { if (!saving) onClose(); }}>
+      <div className="form-dialog" role="dialog" aria-modal="true" aria-label={title} onClick={(event) => event.stopPropagation()}>
+        <div className="form-dialog-heading">
+          <div>
+            <h2>{title}</h2>
+            {description && <p>{description}</p>}
+          </div>
+          <button type="button" className="icon-button" aria-label="Close" onClick={onClose}><X size={18} /></button>
+        </div>
+        {error && <div className="form-error" data-testid="form-dialog-error"><CircleAlert size={15} />{error}</div>}
+        <div className="form-dialog-fields">{children}</div>
+      </div>
+    </div>
+  );
+}
+
+function KnowledgeSourceFormDialog({ open, saving, error, source, onClose, onSubmit }: {
+  open: boolean;
+  saving: boolean;
+  error: string | null;
+  source: { id: string; name: string; kind: KnowledgeSourceFormValues['kind']; status: KnowledgeSourceFormValues['status'] } | null;
+  onClose: () => void;
+  onSubmit: (values: KnowledgeSourceFormValues) => void;
+}) {
+  const [name, setName] = useState(source?.name ?? '');
+  const [kind, setKind] = useState<KnowledgeSourceFormValues['kind']>(source?.kind ?? 'policy');
+  const [status, setStatus] = useState<KnowledgeSourceFormValues['status']>(source?.status ?? 'ready');
+
+  useEffect(() => {
+    setName(source?.name ?? '');
+    setKind(source?.kind ?? 'policy');
+    setStatus(source?.status ?? 'ready');
+  }, [source, open]);
+
+  const handleSubmit = (event: FormEvent) => {
+    event.preventDefault();
+    onSubmit({ name, kind, status });
+  };
+
+  return (
+    <FormDialog
+      title={source ? 'Edit source' : 'Add source'}
+      description="Give this knowledge source a name and tell TalentOS how to treat it."
+      open={open}
+      saving={saving}
+      error={error}
+      onClose={onClose}
+    >
+      <form onSubmit={handleSubmit}>
+        <label>Name
+          <input data-testid="input-source-name" value={name} onChange={(event) => setName(event.target.value)} placeholder="e.g. Engineering hiring policy" />
+        </label>
+        <div className="form-grid">
+          <label>Kind
+            <select data-testid="select-source-kind" value={kind} onChange={(event) => setKind(event.target.value as KnowledgeSourceFormValues['kind'])}>
+              <option value="policy">Policy</option>
+              <option value="job_description">Job description</option>
+              <option value="interview_guide">Interview guide</option>
+              <option value="technical_document">Technical document</option>
+            </select>
+          </label>
+          <label>Status
+            <select data-testid="select-source-status" value={status} onChange={(event) => setStatus(event.target.value as KnowledgeSourceFormValues['status'])}>
+              <option value="ready">Ready</option>
+              <option value="processing">Processing</option>
+              <option value="needs_review">Needs review</option>
+            </select>
+          </label>
+        </div>
+        <div className="form-dialog-actions">
+          <button type="button" className="button-secondary" onClick={onClose}>Cancel</button>
+          <button type="submit" className="button-primary" disabled={saving} data-testid="button-save-source">{saving ? 'Saving…' : 'Save source'}</button>
+        </div>
+      </form>
+    </FormDialog>
+  );
+}
+
+function AutomationFormDialog({ open, saving, error, automation, onClose, onSubmit }: {
+  open: boolean;
+  saving: boolean;
+  error: string | null;
+  automation: { id: string; name: string; trigger: string; status: AutomationFormValues['status'] } | null;
+  onClose: () => void;
+  onSubmit: (values: AutomationFormValues) => void;
+}) {
+  const [name, setName] = useState(automation?.name ?? '');
+  const [trigger, setTrigger] = useState(automation?.trigger ?? '');
+  const [status, setStatus] = useState<AutomationFormValues['status']>(automation?.status ?? 'active');
+
+  useEffect(() => {
+    setName(automation?.name ?? '');
+    setTrigger(automation?.trigger ?? '');
+    setStatus(automation?.status ?? 'active');
+  }, [automation, open]);
+
+  const handleSubmit = (event: FormEvent) => {
+    event.preventDefault();
+    onSubmit({ name, trigger, status });
+  };
+
+  return (
+    <FormDialog
+      title={automation ? 'Edit automation' : 'Add automation'}
+      description="Name the workflow and describe what kicks it off."
+      open={open}
+      saving={saving}
+      error={error}
+      onClose={onClose}
+    >
+      <form onSubmit={handleSubmit}>
+        <label>Name
+          <input data-testid="input-automation-name" value={name} onChange={(event) => setName(event.target.value)} placeholder="e.g. Triage new applicants" />
+        </label>
+        <label>Trigger
+          <input data-testid="input-automation-trigger" value={trigger} onChange={(event) => setTrigger(event.target.value)} placeholder="e.g. a candidate applies" />
+        </label>
+        <label>Status
+          <select data-testid="select-automation-status" value={status} onChange={(event) => setStatus(event.target.value as AutomationFormValues['status'])}>
+            <option value="active">Active</option>
+            <option value="paused">Paused</option>
+            <option value="draft">Draft</option>
+          </select>
+        </label>
+        <div className="form-dialog-actions">
+          <button type="button" className="button-secondary" onClick={onClose}>Cancel</button>
+          <button type="submit" className="button-primary" disabled={saving} data-testid="button-save-automation">{saving ? 'Saving…' : 'Save automation'}</button>
+        </div>
+      </form>
+    </FormDialog>
+  );
+}
+
 function Knowledge() {
+  const queryClient = useQueryClient();
   const query = useListKnowledgeSources({ query: { queryKey: getListKnowledgeSourcesQueryKey() } });
   const sources = query.data ?? [];
-  return <div className="page-content"><SectionHeader eyebrow="Ground truth" title="Knowledge" description="The sources TalentOS can use to keep screening and interview decisions anchored." action={<button className="button-primary" data-testid="button-add-source" onClick={() => window.alert('Source upload is coming in the next workspace release.')}><Plus size={16} /> Add source</button>} /><div className="knowledge-hero"><div className="knowledge-orbit"><div className="orbit-ring ring-one" /><div className="orbit-ring ring-two" /><div className="orbit-core"><Sparkles size={23} /></div></div><div><span className="eyebrow">Retrieval readiness</span><h2>Your hiring context, in one place.</h2><p>Policies, role briefs, and interview guides become a shared point of reference for every evaluator.</p></div><div className="knowledge-total"><b>{sources.reduce((sum, source) => sum + source.chunks, 0).toLocaleString()}</b><span>indexed chunks</span></div></div><DataState loading={query.isLoading} error={query.isError} empty={!sources.length} onRetry={() => query.refetch()}><div className="source-list">{sources.map((source) => <div className="source-row" key={source.id} data-testid={`row-source-${source.id}`}><div className={`source-icon source-${source.kind}`}><FileText size={18} /></div><div className="source-name"><b>{source.name}</b><span>{source.kind.replaceAll('_', ' ')} · {source.chunks} chunks</span></div><StatusPill value={source.status} /><div className="source-updated">Updated {formatDate(source.updatedAt)}</div><button className="more-button" data-testid={`button-source-menu-${source.id}`} onClick={() => window.alert(`Actions for ${source.name}`)}><MoreHorizontal size={17} /></button></div>)}</div></DataState></div>;
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingSource, setEditingSource] = useState<{ id: string; name: string; kind: KnowledgeSourceFormValues['kind']; status: KnowledgeSourceFormValues['status'] } | null>(null);
+  const [mutationError, setMutationError] = useState<string | null>(null);
+  const [assistantQuery, setAssistantQuery] = useState('');
+  const [assistantAnswer, setAssistantAnswer] = useState<{ answer: string; sources: { id: string; name: string; kind: string }[] } | null>(null);
+  const [assistantError, setAssistantError] = useState<string | null>(null);
+
+  const queryKnowledge = useQueryKnowledge({
+    mutation: {
+      onSuccess: (data) => {
+        setAssistantAnswer(data);
+        setAssistantError(null);
+      },
+      onError: () => setAssistantError('Knowledge query failed. Please try again.'),
+    },
+  });
+
+  const createMutation = useCreateKnowledgeSource({
+    mutation: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getListKnowledgeSourcesQueryKey() });
+        setDialogOpen(false);
+        setEditingSource(null);
+        setMutationError(null);
+      },
+      onError: (error) => setMutationError(error instanceof Error ? error.message : 'Could not save the source.'),
+    },
+  });
+
+  const updateMutation = useUpdateKnowledgeSource({
+    mutation: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getListKnowledgeSourcesQueryKey() });
+        setDialogOpen(false);
+        setEditingSource(null);
+        setMutationError(null);
+      },
+      onError: (error) => setMutationError(error instanceof Error ? error.message : 'Could not save the source.'),
+    },
+  });
+
+  const deleteMutation = useDeleteKnowledgeSource({
+    mutation: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getListKnowledgeSourcesQueryKey() });
+        setMutationError(null);
+      },
+      onError: (error) => setMutationError(error instanceof Error ? error.message : 'Could not delete the source.'),
+    },
+  });
+
+  const saving = createMutation.isPending || updateMutation.isPending;
+
+  const openCreate = () => {
+    setEditingSource(null);
+    setMutationError(null);
+    setDialogOpen(true);
+  };
+
+  const openEdit = (source: { id: string; name: string; kind: KnowledgeSourceFormValues['kind']; status: KnowledgeSourceFormValues['status'] }) => {
+    setEditingSource(source);
+    setMutationError(null);
+    setDialogOpen(true);
+  };
+
+  const submitSource = (values: KnowledgeSourceFormValues) => {
+    setMutationError(null);
+    if (editingSource) {
+      updateMutation.mutate({ sourceId: editingSource.id, data: values });
+    } else {
+      createMutation.mutate({ data: values });
+    }
+  };
+
+  const removeSource = (source: { id: string; name: string }) => {
+    if (!window.confirm(`Delete "${source.name}"? This cannot be undone.`)) return;
+    deleteMutation.mutate({ sourceId: source.id });
+  };
+
+  const closeDialog = () => {
+    setDialogOpen(false);
+    setMutationError(null);
+  };
+
+  return <div className="page-content"><SectionHeader eyebrow="Ground truth" title="Knowledge" description="The sources TalentOS can use to keep screening and interview decisions anchored." action={<button className="button-primary" data-testid="button-add-source" onClick={openCreate}><Plus size={16} /> Add source</button>} /><div className="knowledge-hero"><div className="knowledge-orbit"><div className="orbit-ring ring-one" /><div className="orbit-ring ring-two" /><div className="orbit-core"><Sparkles size={23} /></div></div><div><span className="eyebrow">Retrieval readiness</span><h2>Your hiring context, in one place.</h2><p>Policies, role briefs, and interview guides become a shared point of reference for every evaluator.</p></div><div className="knowledge-total"><b>{sources.reduce((sum, source) => sum + source.chunks, 0).toLocaleString()}</b><span>indexed chunks</span></div></div><DataState loading={query.isLoading} error={query.isError} empty={!sources.length} onRetry={() => query.refetch()}><div className="source-list">{sources.map((source) => <div className="source-row" key={source.id} data-testid={`row-source-${source.id}`}><div className={`source-icon source-${source.kind}`}><FileText size={18} /></div><div className="source-name"><b>{source.name}</b><span>{source.kind.replaceAll('_', ' ')} · {source.chunks} chunks</span></div><StatusPill value={source.status} /><div className="source-updated">Updated {formatDate(source.updatedAt)}</div><button className="icon-button" data-testid={`button-source-edit-${source.id}`} aria-label={`Edit ${source.name}`} onClick={() => openEdit({ id: source.id, name: source.name, kind: source.kind, status: source.status })}><Pencil size={16} /></button><button className="icon-button" data-testid={`button-source-delete-${source.id}`} aria-label={`Delete ${source.name}`} onClick={() => removeSource({ id: source.id, name: source.name })}><Trash2 size={16} /></button></div>)}</div></DataState><KnowledgeSourceFormDialog open={dialogOpen} saving={saving} error={mutationError} source={editingSource} onClose={closeDialog} onSubmit={submitSource} /><div className="knowledge-assistant"><div className="assistant-heading"><Brain size={18} /><div><b>Knowledge assistant</b><span>Ask a question grounded in your hiring context.</span></div></div><form className="assistant-form" onSubmit={(event) => { event.preventDefault(); if (!assistantQuery.trim()) return; setAssistantError(null); setAssistantAnswer(null); queryKnowledge.mutate({ data: { query: assistantQuery } }); }}><input data-testid="input-knowledge-query" value={assistantQuery} onChange={(event) => setAssistantQuery(event.target.value)} placeholder="Ask about interview policy, role requirements, or hiring standards..." /><button type="submit" className="button-primary" disabled={queryKnowledge.isPending}>{queryKnowledge.isPending ? 'Searching…' : 'Ask'}</button></form>{assistantAnswer && <div className="assistant-result"><p>{assistantAnswer.answer}</p><div className="assistant-sources">{assistantAnswer.sources.map((source) => <span key={source.id} className="assistant-source-chip">{source.name}</span>)}</div></div>}{assistantError && <div className="form-error" data-testid="form-dialog-error"><CircleAlert size={15} />{assistantError}</div>}</div></div>;
 }
 
 function Automations() {
+  const queryClient = useQueryClient();
   const query = useListAutomations({ query: { queryKey: getListAutomationsQueryKey() } });
   const automations = query.data ?? [];
-  return <div className="page-content"><SectionHeader eyebrow="Quiet leverage" title="Automations" description="Review the workflows that keep candidate movement timely and consistent." action={<button className="button-primary" data-testid="button-new-automation" onClick={() => window.alert('Automation builder is coming in the next workspace release.')}><Plus size={16} /> New automation</button>} /><div className="automation-callout"><div className="automation-callout-icon"><Zap size={21} /></div><div><b>Automation should feel invisible.</b><span>TalentOS is watching the handoffs so your team can stay present for the decisions.</span></div><div className="callout-stat"><b>{automations.filter((automation) => automation.status === 'active').length}</b><span>active workflows</span></div></div><DataState loading={query.isLoading} error={query.isError} empty={!automations.length} onRetry={() => query.refetch()}><div className="automation-list">{automations.map((automation) => <div className="automation-row" key={automation.id} data-testid={`row-automation-${automation.id}`}><div className="automation-flow"><span className="flow-node"><CircleDot size={15} /></span><i /><span className="flow-node"><ArrowRight size={14} /></span></div><div className="automation-name"><b>{automation.name}</b><span>When {automation.trigger}</span></div><div className="automation-steps"><b>{automation.steps}</b><span>steps</span></div><div className="automation-runs"><b>{automation.runsThisMonth}</b><span>runs this month</span></div><StatusPill value={automation.status} /><button className="more-button" data-testid={`button-automation-menu-${automation.id}`} onClick={() => window.alert(`Actions for ${automation.name}`)}><MoreHorizontal size={17} /></button></div>)}</div></DataState></div>;
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingAutomation, setEditingAutomation] = useState<{ id: string; name: string; trigger: string; status: AutomationFormValues['status'] } | null>(null);
+  const [mutationError, setMutationError] = useState<string | null>(null);
+
+  const createMutation = useCreateAutomation({
+    mutation: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getListAutomationsQueryKey() });
+        setDialogOpen(false);
+        setEditingAutomation(null);
+        setMutationError(null);
+      },
+      onError: (error) => setMutationError(error instanceof Error ? error.message : 'Could not save the automation.'),
+    },
+  });
+
+  const updateMutation = useUpdateAutomation({
+    mutation: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getListAutomationsQueryKey() });
+        setDialogOpen(false);
+        setEditingAutomation(null);
+        setMutationError(null);
+      },
+      onError: (error) => setMutationError(error instanceof Error ? error.message : 'Could not save the automation.'),
+    },
+  });
+
+  const deleteMutation = useDeleteAutomation({
+    mutation: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getListAutomationsQueryKey() });
+        setMutationError(null);
+      },
+      onError: (error) => setMutationError(error instanceof Error ? error.message : 'Could not delete the automation.'),
+    },
+  });
+
+  const saving = createMutation.isPending || updateMutation.isPending;
+
+  const openCreate = () => {
+    setEditingAutomation(null);
+    setMutationError(null);
+    setDialogOpen(true);
+  };
+
+  const openEdit = (automation: { id: string; name: string; trigger: string; status: AutomationFormValues['status'] }) => {
+    setEditingAutomation(automation);
+    setMutationError(null);
+    setDialogOpen(true);
+  };
+
+  const submitAutomation = (values: AutomationFormValues) => {
+    setMutationError(null);
+    if (editingAutomation) {
+      updateMutation.mutate({ automationId: editingAutomation.id, data: values });
+    } else {
+      createMutation.mutate({ data: values });
+    }
+  };
+
+  const removeAutomation = (automation: { id: string; name: string }) => {
+    if (!window.confirm(`Delete "${automation.name}"? This cannot be undone.`)) return;
+    deleteMutation.mutate({ automationId: automation.id });
+  };
+
+  const closeDialog = () => {
+    setDialogOpen(false);
+    setMutationError(null);
+  };
+
+  return <div className="page-content"><SectionHeader eyebrow="Quiet leverage" title="Automations" description="Review the workflows that keep candidate movement timely and consistent." action={<button className="button-primary" data-testid="button-new-automation" onClick={openCreate}><Plus size={16} /> New automation</button>} /><div className="automation-callout"><div className="automation-callout-icon"><Zap size={21} /></div><div><b>Automation should feel invisible.</b><span>TalentOS is watching the handoffs so your team can stay present for the decisions.</span></div><div className="callout-stat"><b>{automations.filter((automation) => automation.status === 'active').length}</b><span>active workflows</span></div></div><DataState loading={query.isLoading} error={query.isError} empty={!automations.length} onRetry={() => query.refetch()}><div className="automation-list">{automations.map((automation) => <div className="automation-row" key={automation.id} data-testid={`row-automation-${automation.id}`}><div className="automation-flow"><span className="flow-node"><CircleDot size={15} /></span><i /><span className="flow-node"><ArrowRight size={14} /></span></div><div className="automation-name"><b>{automation.name}</b><span>When {automation.trigger}</span></div><div className="automation-steps"><b>{automation.steps}</b><span>steps</span></div><div className="automation-runs"><b>{automation.runsThisMonth}</b><span>runs this month</span></div><StatusPill value={automation.status} /><button className="icon-button" data-testid={`button-automation-edit-${automation.id}`} aria-label={`Edit ${automation.name}`} onClick={() => openEdit({ id: automation.id, name: automation.name, trigger: automation.trigger, status: automation.status })}><Pencil size={16} /></button><button className="icon-button" data-testid={`button-automation-delete-${automation.id}`} aria-label={`Delete ${automation.name}`} onClick={() => removeAutomation({ id: automation.id, name: automation.name })}><Trash2 size={16} /></button></div>)}</div></DataState><AutomationFormDialog open={dialogOpen} saving={saving} error={mutationError} automation={editingAutomation} onClose={closeDialog} onSubmit={submitAutomation} /></div>;
 }
 
 function Analytics() {
