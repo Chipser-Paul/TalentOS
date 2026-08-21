@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
-import { ClerkProvider, Show, SignIn, SignUp, useClerk, useUser } from '@clerk/react';
+import { ClerkProvider, Show, SignIn, SignUp, useClerk, useUser, useAuth } from '@clerk/react';
 import { publishableKeyFromHost } from '@clerk/react/internal';
 import { shadcn } from '@clerk/themes';
 import {
@@ -79,6 +79,7 @@ import {
   useQueryKnowledge,
   useUpdateKnowledgeSource,
   useUpdateAutomation,
+  setAuthTokenGetter,
 } from '@workspace/api-client-react';
 import type { Candidate } from '@workspace/api-client-react';
 import { ErrorBoundary } from '@/components/error-boundary';
@@ -879,6 +880,33 @@ function ProtectedRouter() {
   );
 }
 
+function ApiAuthBridge() {
+  const { getToken, isLoaded, isSignedIn } = useAuth();
+
+  useEffect(() => {
+    if (!isLoaded || !isSignedIn) {
+      setAuthTokenGetter(null);
+      return;
+    }
+
+    const getter = async () => {
+      try {
+        return await getToken();
+      } catch {
+        return null;
+      }
+    };
+
+    setAuthTokenGetter(getter);
+
+    return () => {
+      setAuthTokenGetter(null);
+    };
+  }, [getToken, isLoaded, isSignedIn]);
+
+  return null;
+}
+
 function ClerkRoutes() {
   const [, setLocation] = useLocation();
   return (
@@ -895,6 +923,7 @@ function ClerkRoutes() {
       routerPush={(to) => setLocation(stripBase(to))}
       routerReplace={(to) => setLocation(stripBase(to), { replace: true })}
     >
+      <ApiAuthBridge />
       <QueryClientProvider client={queryClient}>
         <ClerkQueryClientCacheInvalidator />
         <Switch>
